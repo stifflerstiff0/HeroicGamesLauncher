@@ -5,7 +5,7 @@ import {
   readdirSync,
   writeFileSync
 } from 'graceful-fs'
-import { homedir, userInfo as user } from 'os'
+import { homedir } from 'os'
 import { parse as plistParse, PlistObject } from 'plist'
 
 import {
@@ -13,7 +13,6 @@ import {
   GlobalConfigVersion,
   WineInstallation
 } from 'common/types'
-import { LegendaryUser } from 'backend/storeManagers/legendary/user'
 import {
   currentGlobalConfigVersion,
   configPath,
@@ -579,12 +578,10 @@ class GlobalConfigV0 extends GlobalConfig {
   }
 
   public getFactoryDefaults(): AppSettings {
-    const account_id = LegendaryUser.getUserInfo()?.account_id
-    const userName = user().username
-    const defaultWine = isWindows ? {} : this.getDefaultWine()
+    // @ts-expect-error FIXME: Settings values don't work like this in other parts of the codebase
+    const defaultWine: WineInstallation = isWindows ? {} : this.getDefaultWine()
 
-    // @ts-expect-error TODO: We need to settle on *one* place to define settings defaults
-    return {
+    const settings: Partial<AppSettings> = {
       checkUpdatesInterval: 10,
       enableUpdates: false,
       addDesktopShortcuts: false,
@@ -595,7 +592,7 @@ class GlobalConfigV0 extends GlobalConfig {
       preferSystemLibs: false,
       checkForUpdatesOnStartup: !isFlatpak,
       autoUpdateGames: false,
-      customWinePaths: isWindows ? null : [],
+      customWinePaths: [],
       defaultInstallPath: heroicInstallPath,
       libraryTopSection: 'disabled',
       defaultSteamPath: getSteamCompatFolder(),
@@ -609,14 +606,12 @@ class GlobalConfigV0 extends GlobalConfig {
       wrapperOptions: [],
       showFps: false,
       useGameMode: false,
-      userInfo: {
-        epicId: account_id,
-        name: userName
-      },
       wineCrossoverBottle: 'Heroic',
       winePrefix: isWindows ? '' : defaultWinePrefix,
       wineVersion: defaultWine
-    } as AppSettings
+    }
+    // @ts-expect-error TODO: We need to settle on *one* place to define settings defaults
+    return settings
   }
 
   public setSetting(key: string, value: unknown) {
