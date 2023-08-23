@@ -14,6 +14,7 @@ import {
   flatPakHome,
   isLinux,
   isMac,
+  isWindows,
   runtimePath,
   userHome
 } from './constants'
@@ -737,12 +738,31 @@ async function callRunner(
   abortController: AbortController,
   options?: CallRunnerOptions
 ): Promise<ExecResult> {
-  const fullRunnerPath = join(runner.dir, runner.bin)
   const appName = commandParts[commandParts.findIndex(() => 'launch') + 1]
 
   // Necessary to get rid of possible undefined or null entries, else
   // TypeError is triggered
   commandParts = commandParts.filter(Boolean)
+
+  let bin = runner.bin
+  let fullRunnerPath = join(runner.dir, bin)
+
+  // On Windows: Use PowerShell's `Start-Process` to wait for the process and
+  // its children to exit
+  if (isWindows) {
+    const argsAsString = commandParts
+      .map((part) => (part.includes(' ') ? `"\`"${part}"\`"` : `"${part}"`))
+      .join(',')
+    commandParts = [
+      'Start-Process',
+      `${fullRunnerPath}`,
+      '-Wait',
+      '-ArgumentList',
+      argsAsString,
+      '-NoNewWindow'
+    ]
+    bin = fullRunnerPath = 'powershell'
+  }
 
   const safeCommand = getRunnerCallWithoutCredentials(
     [...commandParts],
@@ -771,8 +791,6 @@ async function callRunner(
       writeFileSync(options.logFile, '')
     }
   }
-
-  const bin = runner.bin
 
   // check if the same command is currently running
   // if so, return the same promise instead of running it again
